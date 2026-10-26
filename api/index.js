@@ -119,9 +119,21 @@ app.post('/api/admin/login', loginLimiter, route(async (req, res) => {
   assertProductionConfig()
   const parsed = z.object({ email: z.string().email().max(254), password: z.string().min(1).max(200) }).safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'Enter a valid email and password.' })
+  const email = parsed.data.email.toLowerCase()
+
+  // Check MongoDB-registered users first
+  const dbUser = await findAdminUserByEmail(email)
+  if (dbUser) {
+    const passwordMatches = await verifyAdminPassword(parsed.data.password, dbUser.passwordHash)
+    if (!passwordMatches) return res.status(401).json({ error: 'Email or password is incorrect.' })
+    const token = jwt.sign({ sub: dbUser.email, role: 'admin' }, jwtSecret(), { expiresIn: '8h', issuer: 'fieldnote-quiz' })
+    return res.json({ token, expiresIn: 28800 })
+  }
+
+  // Fall back to env var credentials (legacy/dev setup)
   const configuredEmail = (process.env.ADMIN_EMAIL || (process.env.NODE_ENV === 'production' ? '' : 'admin@example.test')).toLowerCase()
   const passwordHash = process.env.ADMIN_PASSWORD_HASH || ''
-  const emailMatches = parsed.data.email.toLowerCase() === configuredEmail
+  const emailMatches = email === configuredEmail
   const passwordMatches = passwordHash
     ? await bcrypt.compare(parsed.data.password, passwordHash)
     : process.env.NODE_ENV !== 'production' && parsed.data.password === (process.env.ADMIN_PASSWORD || 'local-development-password')

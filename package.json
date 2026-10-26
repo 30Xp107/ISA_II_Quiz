@@ -1,0 +1,33 @@
+{
+  "name": "isa-quiz-live",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:pair": "concurrently -k \"npm:dev:client\" \"npm:dev:api\"",
+    "dev:client": "npm --prefix client run dev",
+    "dev:api": "node --watch api/index.js",
+    "build": "npm --prefix client run build",
+    "start": "node api/index.js",
+    "admin:hash-password": "node scripts/hash-admin-password.js",
+    "test": "node --test api/*.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

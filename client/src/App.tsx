@@ -1452,6 +1452,19 @@ function App() {
                       </div>
                     )}
                     <div className="control-actions">
+                      {session.status !== "lobby" && (
+                        <button
+                          className="primary coral"
+                          onClick={() =>
+                            window.confirm(
+                              "Restart this game? All scores and answers will be reset.",
+                            ) && void restartSession()
+                          }
+                          disabled={busy}
+                        >
+                          <RefreshCw size={17} /> Restart game
+                        </button>
+                      )}
                       {session.status === "lobby" && (
                         <button
                           className="primary"

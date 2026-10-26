@@ -1,4 +1,6 @@
 import mongoose from 'mongoose'
+import { randomBytes } from 'node:crypto'
+import bcrypt from 'bcryptjs'
 
 const sessionSchema = new mongoose.Schema({
   _id: { type: String },
@@ -9,16 +11,31 @@ const quizConfigSchema = new mongoose.Schema({
   stages: { type: mongoose.Schema.Types.Mixed, required: true },
 }, { versionKey: '__v', timestamps: true })
 
+const adminUserSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  passwordHash: { type: String, required: true },
+  validId: { type: String, required: true },
+}, { versionKey: '__v', timestamps: true })
+
 const SessionModel = mongoose.models.QuizSession || mongoose.model('QuizSession', sessionSchema)
 const QuizConfigModel = mongoose.models.QuizConfig || mongoose.model('QuizConfig', quizConfigSchema)
+const AdminUserModel = mongoose.models.AdminUser || mongoose.model('AdminUser', adminUserSchema)
 const memorySessions = new Map()
 let memoryQuizStages
+let memoryAdminUsers = new Map()
 let connectionPromise
 
 export class SessionConflictError extends Error {
   constructor() {
     super('Session changed during this request. Refresh and retry.')
     this.name = 'SessionConflictError'
+  }
+}
+
+export class UserConflictError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'UserConflictError'
   }
 }
 
@@ -149,4 +166,35 @@ export async function saveQuizStages(stages) {
     { $set: { stages } },
     { upsert: true, setDefaultsOnInsert: true },
   )
+}
+
+export async function findAdminUserByEmail(email) {
+  await connect()
+  if (!process.env.MONGODB_URI) {
+    return [...memoryAdminUsers.values()].find((user) => user.email === email) || null
+  }
+  return AdminUserModel.findOne({ email }).lean()
+}
+
+export async function createAdminUser(user) {
+  await connect()
+  const email = user.email.toLowerCase().trim()
+  const existing = await findAdminUserByEmail(email)
+  if (existing) throw new UserConflictError('An account with this email is already registered.')
+  const userDocument = {
+    email,
+    passwordHash: user.passwordHash,
+    validId: user.validId,
+  }
+  if (!process.env.MONGODB_URI) {
+    const id = randomBytes(16).toString('hex')
+    memoryAdminUsers.set(id, { ...userDocument, _id: id })
+    return { ...userDocument, _id: id }
+  }
+  const document = await AdminUserModel.create(userDocument)
+  return document.toObject ? document.toObject() : document
+}
+
+export async function verifyAdminPassword(plainPassword, storedHash) {
+  return bcrypt.compare(plainPassword, storedHash)
 }

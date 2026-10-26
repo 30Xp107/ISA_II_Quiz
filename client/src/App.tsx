@@ -285,6 +285,12 @@ function App() {
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem("fieldnote-admin-token") || "");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [authTab, setAuthTab] = useState<"signin" | "register">("signin");
+  const [regCode, setRegCode] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirm, setRegConfirm] = useState("");
+  const [regSuccess, setRegSuccess] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [projectorOpen, setProjectorOpen] = useState(false);
   const [editingStage, setEditingStage] = useState(0);
@@ -735,6 +741,40 @@ function App() {
     }
   }
 
+  async function registerAdmin(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+    setRegSuccess("");
+    if (regPassword !== regConfirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (regPassword.length < 14) {
+      setError("Password must be at least 14 characters.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await api<{ registered: boolean; email: string }>("/admin/register", {
+        method: "POST",
+        body: JSON.stringify({ validId: regCode, email: regEmail, password: regPassword }),
+      });
+      if (result.registered) {
+        setRegSuccess(`Account created for ${result.email}. You can now sign in.`);
+        setRegCode("");
+        setRegEmail("");
+        setRegPassword("");
+        setRegConfirm("");
+        setAuthTab("signin");
+        setAdminEmail(result.email);
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Registration failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function signOutAdmin() {
     sessionStorage.removeItem("fieldnote-admin-token");
     setAdminToken("");
@@ -1091,17 +1131,135 @@ function App() {
 
       {isHost && !adminToken && (
         <section className="admin-login-wrap">
-          <form className="admin-login" onSubmit={signInAdmin}>
+          <div className="admin-login">
             <span className="eyebrow">ADMINISTRATOR ACCESS</span>
-            <h1>Sign in to host.</h1>
-            <p className="muted">Host controls are available to authorized administrators.</p>
-            <label htmlFor="admin-email">Email</label>
-            <input id="admin-email" type="email" autoComplete="username" value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} required />
-            <label htmlFor="admin-password">Password</label>
-            <input id="admin-password" type="password" autoComplete="current-password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} required />
-            {error && <p className="error" role="alert">{error}</p>}
-            <button className="primary full" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin" /> : <ShieldCheck size={17} />} Sign in</button>
-          </form>
+            <h1>{authTab === "signin" ? "Sign in to host." : "Create an account."}</h1>
+            <p className="muted">
+              {authTab === "signin"
+                ? "Host controls are available to authorized administrators."
+                : "Enter your registration code to create a host account."}
+            </p>
+
+            {/* Tab switcher */}
+            <div className="auth-tabs">
+              <button
+                type="button"
+                className={`auth-tab ${authTab === "signin" ? "active" : ""}`}
+                onClick={() => { setAuthTab("signin"); setError(""); setRegSuccess(""); }}
+              >
+                <ShieldCheck size={15} /> Sign In
+              </button>
+              <button
+                type="button"
+                className={`auth-tab ${authTab === "register" ? "active" : ""}`}
+                onClick={() => { setAuthTab("register"); setError(""); setRegSuccess(""); }}
+              >
+                <Plus size={15} /> Register
+              </button>
+            </div>
+
+            {/* Success banner */}
+            {regSuccess && (
+              <p className="reg-success" role="status">
+                <Check size={15} /> {regSuccess}
+              </p>
+            )}
+
+            {/* Sign-in form */}
+            {authTab === "signin" && (
+              <form onSubmit={signInAdmin}>
+                <label htmlFor="admin-email">Email</label>
+                <input
+                  id="admin-email"
+                  type="email"
+                  autoComplete="username"
+                  value={adminEmail}
+                  onChange={(event) => setAdminEmail(event.target.value)}
+                  required
+                />
+                <label htmlFor="admin-password">Password</label>
+                <input
+                  id="admin-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={adminPassword}
+                  onChange={(event) => setAdminPassword(event.target.value)}
+                  required
+                />
+                {error && <p className="error" role="alert">{error}</p>}
+                <button className="primary full" disabled={busy}>
+                  {busy ? <LoaderCircle size={17} className="spin" /> : <ShieldCheck size={17} />}{" "}
+                  Sign in
+                </button>
+                <p className="auth-switch-hint">
+                  Don't have an account?{" "}
+                  <button type="button" className="link-button" onClick={() => { setAuthTab("register"); setError(""); }}>
+                    Register here
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {/* Registration form */}
+            {authTab === "register" && (
+              <form onSubmit={registerAdmin}>
+                <label htmlFor="reg-code">Registration Code</label>
+                <input
+                  id="reg-code"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Enter the 6-digit code"
+                  value={regCode}
+                  onChange={(event) => setRegCode(event.target.value)}
+                  maxLength={20}
+                  required
+                />
+                <label htmlFor="reg-email">Email</label>
+                <input
+                  id="reg-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="your@email.com"
+                  value={regEmail}
+                  onChange={(event) => setRegEmail(event.target.value)}
+                  required
+                />
+                <label htmlFor="reg-password">Password <span className="muted" style={{fontWeight: 400, fontSize: "0.78em"}}>(min. 14 characters)</span></label>
+                <input
+                  id="reg-password"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="At least 14 characters"
+                  value={regPassword}
+                  onChange={(event) => setRegPassword(event.target.value)}
+                  minLength={14}
+                  required
+                />
+                <label htmlFor="reg-confirm">Confirm Password</label>
+                <input
+                  id="reg-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Repeat your password"
+                  value={regConfirm}
+                  onChange={(event) => setRegConfirm(event.target.value)}
+                  minLength={14}
+                  required
+                />
+                {error && <p className="error" role="alert">{error}</p>}
+                <button className="primary full" disabled={busy}>
+                  {busy ? <LoaderCircle size={17} className="spin" /> : <Plus size={17} />}{" "}
+                  Create account
+                </button>
+                <p className="auth-switch-hint">
+                  Already have an account?{" "}
+                  <button type="button" className="link-button" onClick={() => { setAuthTab("signin"); setError(""); }}>
+                    Sign in
+                  </button>
+                </p>
+              </form>
+            )}
+          </div>
         </section>
       )}
       {isHost && adminToken && (

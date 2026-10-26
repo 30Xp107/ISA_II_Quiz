@@ -10,7 +10,7 @@ import rateLimit from 'express-rate-limit'
 import { z } from 'zod'
 import { makeChallengeRows, questionBank, stageTitles } from './questions.js'
 import { scoreChallenge, scoreMultipleChoice } from './scoring.js'
-import { createSession, databaseReady, getQuizStages, getSession, listSessions, persistenceMode, saveQuizStages, saveSession, SessionConflictError } from './store.js'
+import { createSession, createAdminUser, databaseReady, findAdminUserByEmail, getQuizStages, getSession, listSessions, persistenceMode, saveQuizStages, saveSession, SessionConflictError, UserConflictError, verifyAdminPassword } from './store.js'
 
 const app = express()
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false)
@@ -128,6 +128,29 @@ app.post('/api/admin/login', loginLimiter, route(async (req, res) => {
   if (!emailMatches || !passwordMatches) return res.status(401).json({ error: 'Email or password is incorrect.' })
   const token = jwt.sign({ sub: configuredEmail, role: 'admin' }, jwtSecret(), { expiresIn: '8h', issuer: 'fieldnote-quiz' })
   return res.json({ token, expiresIn: 28800 })
+}))
+
+app.post('/api/admin/register', route(async (req, res) => {
+  const parsed = z.object({
+    validId: z.string().trim().min(1).max(20),
+    email: z.string().email().max(254),
+    password: z.string().min(14).max(200),
+  }).safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'Enter a valid ID, a valid email, and a secure password (min 14 characters).' })
+  const validRegistrationId = '067079'
+  if (parsed.data.validId !== validRegistrationId) return res.status(400).json({ error: 'Invalid registration ID. Please check and try again.' })
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12)
+  try {
+    const user = await createAdminUser({
+      email: parsed.data.email,
+      passwordHash,
+      validId: parsed.data.validId,
+    })
+    return res.status(201).json({ registered: true, email: user.email })
+  } catch (error) {
+    if (error instanceof UserConflictError) return res.status(409).json({ error: error.message })
+    throw error
+  }
 }))
 
 app.get('/api/admin/sessions', requireAdmin, route(async (_req, res) => {

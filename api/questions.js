@@ -1,15 +1,15 @@
 export const questionBank = [
   [
-    { prompt: 'Which component carries out most instructions in a computer?', options: ['CPU', 'Monitor', 'Keyboard', 'Printer'], answer: 0, explanation: 'The CPU processes instructions and coordinates computer operations.' },
-    { prompt: 'What is RAM mainly used for?', options: ['Long-term photo storage', 'Temporary working memory', 'Printing documents', 'Connecting to Wi-Fi'], answer: 1, explanation: 'RAM holds information that active programs need while they are running.' },
-    { prompt: 'Which device is an output device?', options: ['Mouse', 'Keyboard', 'Monitor', 'Microphone'], answer: 2, explanation: 'A monitor presents visual output from the computer.' },
-    { prompt: 'What is the motherboard’s main role?', options: ['Connect and let components communicate', 'Store every file permanently', 'Print documents', 'Protect the screen'], answer: 0, explanation: 'The motherboard connects major components so they can communicate.' },
-    { prompt: 'Which is usually faster for active work: RAM or an SSD?', options: ['RAM', 'SSD', 'They are the same', 'A printer'], answer: 0, explanation: 'RAM is fast temporary working memory; an SSD stores files persistently.' },
-    { prompt: 'Which device is used to enter spoken audio?', options: ['Speaker', 'Microphone', 'Monitor', 'Projector'], answer: 1, explanation: 'A microphone is an input device that captures sound.' },
-    { prompt: 'A computer is unresponsive. What is a sensible first step?', options: ['Forcefully unplug every cable', 'Wait briefly and check for a response', 'Open the power supply', 'Pour water on the keyboard'], answer: 1, explanation: 'Start with safe basic checks; avoid opening powered equipment.' },
-    { prompt: 'Which component keeps files when the computer is turned off?', options: ['RAM', 'CPU cache', 'SSD', 'Fan'], answer: 2, explanation: 'An SSD is persistent storage and retains files without power.' },
-    { prompt: 'A scanner is primarily which kind of device?', options: ['Input', 'Output', 'Processing', 'Storage'], answer: 0, explanation: 'A scanner captures physical material as digital input.' },
-    { prompt: 'Why should liquids be kept away from computer equipment?', options: ['They reduce screen brightness', 'They can cause electrical damage or injury', 'They slow the mouse pointer', 'They erase printed pages'], answer: 1, explanation: 'Liquids can damage electronics and create electrical hazards.' },
+    { prompt: 'How many household IDs (HHID) are listed in the demo records?', options: ['12', '11', '10', '13'], answer: 0, explanation: 'All 12 demo records include a household ID.' },
+    { prompt: 'How many EBT cards are listed in the demo records?', options: ['12', '11', '10', '13'], answer: 0, explanation: 'Every one of the 12 records lists an EBT card number.' },
+    { prompt: 'How many PK numbers are listed in the demo records?', options: ['12', '11', '10', '13'], answer: 1, explanation: 'Eleven records list a PK number; one record (R-007) has a blank PK.' },
+    { prompt: 'How many demo records are missing a PK number?', options: ['0', '1', '2', '3'], answer: 1, explanation: 'Only R-007 has a blank PK number, so one record is missing it.' },
+    { prompt: 'How many demo records are missing a WGP ID?', options: ['0', '1', '2', '3'], answer: 1, explanation: 'Only R-004 has a blank WGP ID, so one record is missing it.' },
+    { prompt: 'How many records list both a household ID and an EBT card?', options: ['10', '11', '12', '13'], answer: 2, explanation: 'All 12 records include both a household ID and an EBT card.' },
+    { prompt: 'Which identifier appears the fewest times across the demo records?', options: ['Household ID (HHID)', 'PK number', 'EBT card', 'They all appear equally'], answer: 1, explanation: 'HHID and EBT cards appear 12 times each; PK numbers appear 11 times.' },
+    { prompt: 'How many records have a missing or blank identifier field (WGP ID or PK number)?', options: ['1', '2', '3', '4'], answer: 1, explanation: 'R-004 is missing a WGP ID and R-007 is missing a PK number: two records in total.' },
+    { prompt: 'How many household IDs begin with the HH-DEMO prefix?', options: ['10', '11', '12', '13'], answer: 2, explanation: 'All 12 household IDs use the synthetic HH-DEMO prefix.' },
+    { prompt: 'How many EBT cards begin with the EBT-DEMO prefix?', options: ['10', '11', '12', '13'], answer: 2, explanation: 'All 12 EBT cards use the synthetic EBT-DEMO prefix.' },
   ],
   [
     { prompt: 'A date field contains “31/02/2024”. What is the main issue?', options: ['It is a valid leap-day date', 'The date does not exist', 'It needs a longer ID', 'It contains extra spaces'], answer: 1, explanation: 'February never has 31 days, so this value needs correction or review.' },
@@ -51,7 +51,24 @@ export const questionBank = [
   ],
 ]
 
-export const stageTitles = ['Computer essentials', 'Data quality', 'Matching & validation', 'Privacy in practice', 'Spreadsheet challenge']
+export const stageTitles = ['HHID, PK & EBT Counts', 'Data quality', 'Matching & validation', 'Privacy in practice', 'Spreadsheet challenge']
+
+/**
+ * Returns a copy of a multiple-choice question with its answer choices
+ * shuffled (scrambled) and the correct-answer index remapped to match the
+ * new order. All participants in a session see the same shuffled order
+ * because this is applied once when the session snapshot is created.
+ */
+export function shuffleQuestion(question) {
+  const indices = [...Array(question.options.length).keys()]
+  for (let i = indices.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[indices[i], indices[j]] = [indices[j], indices[i]]
+  }
+  const options = indices.map((index) => question.options[index])
+  const answer = indices.indexOf(question.answer)
+  return { ...question, options, answer }
+}
 
 export function makeChallengeRows() {
   return [

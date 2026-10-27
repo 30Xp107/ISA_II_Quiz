@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { z } from 'zod'
-import { makeChallengeRows, questionBank, stageTitles } from './questions.js'
+import { makeChallengeRows, questionBank, shuffleQuestion, stageTitles } from './questions.js'
 import { scoreChallenge, scoreMultipleChoice } from './scoring.js'
 import { createSession, createAdminUser, databaseReady, findAdminUserByEmail, getQuizStages, getSession, listSessions, persistenceMode, saveQuizStages, saveSession, SessionConflictError, UserConflictError, verifyAdminPassword } from './store.js'
 
@@ -192,7 +192,8 @@ app.put('/api/admin/questions', requireAdmin, route(async (req, res) => {
 app.post('/api/sessions', requireAdmin, route(async (_req, res) => {
   const code = randomBytes(6).toString('hex').toUpperCase()
   const quizStages = await getQuizStages(questionBank)
-  const session = { code, status: 'lobby', stage: 1, questionIndex: 0, questions: quizStages[0], quizStages, participants: new Map(), answers: new Map(), deadline: null, challengeRows: makeChallengeRows() }
+  const shuffledStages = quizStages.map((stage) => stage.map(shuffleQuestion))
+  const session = { code, status: 'lobby', stage: 1, questionIndex: 0, questions: shuffledStages[0], quizStages: shuffledStages, participants: new Map(), answers: new Map(), deadline: null, challengeRows: makeChallengeRows() }
   await createSession(session)
   return res.status(201).json(publicSession(session))
 }))

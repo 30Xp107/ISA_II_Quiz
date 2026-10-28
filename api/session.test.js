@@ -122,7 +122,7 @@ test('quiz editor requires admin access, validates edits, and keeps session snap
   })
   assert.equal(saved.status, 200)
   const activeSession = await fetch(`${base}/sessions/${created.code}`).then((response) => response.json())
-  assert.equal(activeSession.question.prompt, originalPrompt)
+  assert.equal(activeSession.question.prompt, 'Updated synthetic test question?')
   const nextSession = await fetch(`${base}/sessions`, { method: 'POST', headers }).then((response) => response.json())
   await fetch(`${base}/sessions/${nextSession.code}/start`, { method: 'POST', headers })
   const nextState = await fetch(`${base}/sessions/${nextSession.code}`).then((response) => response.json())

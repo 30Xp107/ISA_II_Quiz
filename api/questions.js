@@ -51,7 +51,7 @@ export const questionBank = [
   ],
 ]
 
-export const stageTitles = ['HHID, PK & EBT Counts', 'Data quality', 'Matching & validation', 'Privacy in practice', 'Spreadsheet challenge']
+export const stageTitles = ['Parts of a Computer', 'Data quality', 'Matching & validation', 'Privacy in practice', 'Spreadsheet challenge']
 
 /**
  * Returns a copy of a multiple-choice question with its answer choices

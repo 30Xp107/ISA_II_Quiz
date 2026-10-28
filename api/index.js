@@ -182,10 +182,26 @@ app.get('/api/admin/questions', requireAdmin, route(async (_req, res) => {
   return res.json({ stages: await getQuizStages(questionBank), stageTitles })
 }))
 
+async function syncLiveSessionsToQuizStages(stages) {
+  const sessions = await listSessions()
+  await Promise.all(sessions.map(async (session) => {
+    if (session.status === 'complete') return session
+    session.quizStages = stages
+    if (session.stage < 5) {
+      const stageIndex = Math.min(session.stage - 1, stages.length - 1)
+      session.questions = Array.isArray(stages[stageIndex]) ? stages[stageIndex] : []
+      if (session.questionIndex >= session.questions.length) session.questionIndex = 0
+    }
+    await saveSession(session)
+    return session
+  }))
+}
+
 app.put('/api/admin/questions', requireAdmin, route(async (req, res) => {
   const parsed = editableStages.safeParse(req.body.stages)
   if (!parsed.success) return res.status(400).json({ error: 'Each of the four stages must contain 1–20 valid questions.' })
   await saveQuizStages(parsed.data)
+  await syncLiveSessionsToQuizStages(parsed.data)
   return res.json({ saved: true, stages: parsed.data })
 }))
 

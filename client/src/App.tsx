@@ -1325,7 +1325,7 @@ function App() {
                     </article>
                   ))}
                 </div>
-                <p className="editor-footnote">Changes apply to new sessions. Active sessions keep their original question snapshot. Stage limit: 20 questions.</p>
+                <p className="editor-footnote">Changes apply to the current room and future rooms. Stage limit: 20 questions.</p>
               </section>
             ) : projectorOpen ? (
               <ProjectorPanel

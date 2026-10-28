@@ -132,11 +132,15 @@ app.post('/api/admin/login', loginLimiter, route(async (req, res) => {
 
   // Fall back to env var credentials (legacy/dev setup)
   const configuredEmail = (process.env.ADMIN_EMAIL || (process.env.NODE_ENV === 'production' ? '' : 'admin@example.test')).toLowerCase()
+  const configuredPassword = process.env.ADMIN_PASSWORD || ''
   const passwordHash = process.env.ADMIN_PASSWORD_HASH || ''
+  const hashLooksValid = typeof passwordHash === 'string' && passwordHash.startsWith('$2')
   const emailMatches = email === configuredEmail
-  const passwordMatches = passwordHash
-    ? await bcrypt.compare(parsed.data.password, passwordHash)
-    : process.env.NODE_ENV !== 'production' && parsed.data.password === (process.env.ADMIN_PASSWORD || 'local-development-password')
+  const passwordMatches = configuredPassword
+    ? parsed.data.password === configuredPassword
+    : hashLooksValid
+      ? await bcrypt.compare(parsed.data.password, passwordHash)
+      : process.env.NODE_ENV !== 'production' && parsed.data.password === 'local-development-password'
   if (!emailMatches || !passwordMatches) return res.status(401).json({ error: 'Email or password is incorrect.' })
   const token = jwt.sign({ sub: configuredEmail, role: 'admin' }, jwtSecret(), { expiresIn: '8h', issuer: 'fieldnote-quiz' })
   return res.json({ token, expiresIn: 28800 })
@@ -184,17 +188,31 @@ app.get('/api/admin/questions', requireAdmin, route(async (_req, res) => {
 
 async function syncLiveSessionsToQuizStages(stages) {
   const sessions = await listSessions()
-  await Promise.all(sessions.map(async (session) => {
-    if (session.status === 'complete') return session
-    session.quizStages = stages
-    if (session.stage < 5) {
-      const stageIndex = Math.min(session.stage - 1, stages.length - 1)
-      session.questions = Array.isArray(stages[stageIndex]) ? stages[stageIndex] : []
-      if (session.questionIndex >= session.questions.length) session.questionIndex = 0
+
+  for (const session of sessions) {
+    if (session.status === 'complete') continue
+
+    let retries = 0
+    while (retries < 4) {
+      try {
+        const fresh = await getSession(session.code)
+        if (!fresh || fresh.status === 'complete') break
+
+        fresh.quizStages = stages
+        if (fresh.stage < 5) {
+          const stageIndex = Math.min(fresh.stage - 1, stages.length - 1)
+          fresh.questions = Array.isArray(stages[stageIndex]) ? stages[stageIndex] : []
+          if (fresh.questionIndex >= fresh.questions.length) fresh.questionIndex = 0
+        }
+
+        await saveSession(fresh)
+        break
+      } catch (error) {
+        if (!(error instanceof SessionConflictError) || retries === 3) throw error
+        retries += 1
+      }
     }
-    await saveSession(session)
-    return session
-  }))
+  }
 }
 
 app.put('/api/admin/questions', requireAdmin, route(async (req, res) => {

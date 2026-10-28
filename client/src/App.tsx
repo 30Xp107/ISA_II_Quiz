@@ -2032,6 +2032,16 @@ function ProjectorChallengeTable({ rows }: { rows: ChallengeRow[] }) {
   );
 }
 
+const findingGuide: Record<string, { label: string; desc: string; example: string }> = {
+  none: { label: "No issue", desc: "Row looks complete and correct.", example: "All fields filled in properly" },
+  missing: { label: "Missing value", desc: "A required field is blank.", example: "WGP ID or PK number is empty" },
+  date: { label: "Invalid date", desc: "Birthday doesn't exist or wrong format.", example: "31/02/2024 or month 13" },
+  format: { label: "Bad format", desc: "ID or card number doesn't match the expected pattern.", example: "EBT card too short" },
+  name: { label: "Name needs review", desc: "Name has digits or unexpected characters.", example: "Riley8" },
+  spaces: { label: "Extra space", desc: "Leading or trailing space in an ID.", example: "HH-DEMO-1043 " },
+  review: { label: "Possible match", desc: "Looks like a duplicate — needs manual review.", example: "Same birthday and ID as another row" },
+};
+
 function Challenge({
   rows,
   marked,
@@ -2043,16 +2053,62 @@ function Challenge({
   onMark: (id: string, value: string) => void;
   disabled: boolean;
 }) {
+  const total = rows.length;
+  const completed = Object.keys(marked).length;
+  const exampleRow = rows[0];
+
   return (
     <div className="challenge">
       <div className="challenge-head">
         <span className="eyebrow">STAGE 5 · FIND THE ISSUE</span>
-        <span className="sheet-tag">DEMO_ROWS · {rows.length} RECORDS</span>
+        <span className="sheet-tag">DEMO_ROWS · {total} RECORDS</span>
       </div>
-      <h1>What needs a closer look?</h1>
-      <p className="muted">
-        Classify each row. Similarities need review, not an automatic merge.
-      </p>
+
+      {/* Instructions */}
+      <div className="challenge-instructions">
+        <h2>How to play</h2>
+        <p>
+          Check every demo row for data problems. Pick one finding for each row,
+          then submit before the timer runs out.
+        </p>
+        <ol>
+          <li>Scan the row from left to right.</li>
+          <li>If something looks wrong, pick the matching finding.</li>
+          <li>If the row looks fine, choose "No issue".</li>
+          <li>You must classify all {total} rows before submitting.</li>
+        </ol>
+        <p className="progress-note">
+          Progress: <strong>{completed} of {total}</strong> rows classified
+        </p>
+      </div>
+
+      {/* Finding guide */}
+      <div className="finding-guide">
+        <h3>What the findings mean</h3>
+        <div className="finding-grid">
+          {Object.entries(findingGuide).map(([key, info]) => (
+            <div key={key} className="finding-card">
+              <strong>{info.label}</strong>
+              <span className="finding-desc">{info.desc}</span>
+              <span className="finding-example">{info.example}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Example row */}
+      <div className="example-row">
+        <h3>Example</h3>
+        <p>
+          Row <strong>{exampleRow.id}</strong> looks complete: HHID{" "}
+          <code>{exampleRow.hhid}</code>, WGP ID{" "}
+          <code>{exampleRow.wgp}</code>, EBT card <code>{exampleRow.ebt}</code>, PK{" "}
+          <code>{exampleRow.pk}</code>, and a valid birthday. Correct finding:{" "}
+          <strong>No issue</strong>.
+        </p>
+      </div>
+
+      {/* Data table */}
       <div className="sheet-scroll">
         <table>
           <thead>
@@ -2070,7 +2126,7 @@ function Challenge({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id}>
+              <tr key={row.id} className={marked[row.id] ? "row-done" : "row-todo"}>
                 <td>{row.id}</td>
                 <td>{row.hhid}</td>
                 <td>{row.wgp || "—"}</td>
@@ -2088,12 +2144,12 @@ function Challenge({
                   >
                     <option value="">Select…</option>
                     <option value="none">No issue</option>
-                    <option value="date">Date invalid</option>
-                    <option value="missing">Required value missing</option>
-                    <option value="format">Identifier format</option>
+                    <option value="missing">Missing value</option>
+                    <option value="date">Invalid date</option>
+                    <option value="format">Bad format</option>
                     <option value="name">Name needs review</option>
-                    <option value="spaces">Whitespace</option>
-                    <option value="review">Possible match, review</option>
+                    <option value="spaces">Extra space</option>
+                    <option value="review">Possible match</option>
                   </select>
                 </td>
               </tr>
@@ -2102,8 +2158,8 @@ function Challenge({
         </table>
       </div>
       <p className="sheet-note">
-        <ShieldCheck size={14} /> Synthetic records · answer notes appear after
-        the challenge closes.
+        <ShieldCheck size={14} /> Synthetic records only · answer notes appear
+        after the challenge closes.
       </p>
     </div>
   );

@@ -154,7 +154,7 @@ function PersonAvatar({ avatar, size = 22 }: { avatar: string; size?: number }) 
 }
 
 const stages = [
-  "HHID, PK & EBT Counts",
+  "Computer Hardware Knowledge Assessment",
   "Data quality",
   "Matching & validation",
   "Privacy in practice",
